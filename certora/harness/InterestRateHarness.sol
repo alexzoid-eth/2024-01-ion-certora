@@ -3,6 +3,6 @@ pragma solidity 0.8.21;
 
 import "../../src/InterestRate.sol";
 
-contract ActivePoolHarness is ActivePool {   
+contract InterestRateHarness is InterestRate {   
     constructor(IlkData[] memory ilkDataList, IYieldOracle _yieldOracle) InterestRate(ilkDataList, _yieldOracle) { }
 }

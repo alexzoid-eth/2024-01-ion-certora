@@ -1,10 +1,6 @@
 import "./base/liquidation.spec";
 import "./dependencies/erc20.spec";
 
-using ERC20A as underlying;
-using ERC20B as underlyingForPool;
-using IonPool as Ion;
-
 use builtin rule sanity;
 
 /////////////////// METHODS ///////////////////////
