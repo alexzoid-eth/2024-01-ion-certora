@@ -1,8 +1,3 @@
-import "./base/ionPool.spec";
-import "./dependencies/erc20.spec";
-
-use builtin rule sanity;
-
 /////////////////// METHODS ///////////////////////
 
 methods {
