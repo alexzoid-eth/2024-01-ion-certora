@@ -69,11 +69,11 @@ methods {
 ///////////////// DEFINITIONS /////////////////////
 
 // Slot number of IonPoolStorageLocation
-definition ION_POOL_STORAGE_LOCATION_UINT() returns uint256 = 0xceba3d526b4d5afd91d1b752bf1fd37917c20a6daf576bcb41dd1c57c1f67e00;
-definition ION_POOL_STORAGE_LOCATION() returns bytes32 = to_bytes32(ION_POOL_STORAGE_LOCATION_UINT());
+definition ION_POOL_STORAGE_LOCATION() returns uint256 
+    = 0xceba3d526b4d5afd91d1b752bf1fd37917c20a6daf576bcb41dd1c57c1f67e00;
  
 // Slot number of IonPoolStorage.ilks[] length
-definition STORAGE_SLOT_ILKS_LENGTH() returns bytes32 = ION_POOL_STORAGE_LOCATION();
+definition STORAGE_SLOT_ILKS_LENGTH() returns bytes32 = to_bytes32(ION_POOL_STORAGE_LOCATION());
 
 // Size of IonPoolStorage.ilks in slots
 definition ILKS_SIZE_IN_SLOTS() returns mathint = 4;
@@ -100,31 +100,31 @@ definition ILKS_SLOT0_LAST_RATE_UPDATE(uint256 s) returns uint256
 
 // Slot number of IonPoolStorage.ilkAddresses._inner._values[] length
 definition STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_LENGTH() returns bytes32 
-    = keccak256(to_bytes32(require_uint256(ION_POOL_STORAGE_LOCATION_UINT() + 1))); 
+    = keccak256(to_bytes32(require_uint256(ION_POOL_STORAGE_LOCATION() + 1))); 
 
 // Slot number of IonPoolStorage.debt
 definition IS_STORAGE_SLOT_DEBT(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 7)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 7)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 // Slot number of IonPoolStorage.weth
 definition IS_STORAGE_SLOT_WETH(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 8)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 8)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 // Slot number of IonPoolStorage.wethSupplyCap
 definition IS_STORAGE_SLOT_WETH_SUPPLY_CAP(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 9)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 9)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 // Slot number of IonPoolStorage.totalUnbackedDebt
 definition IS_STORAGE_SLOT_TOTAL_UNBACKED_DEBT(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 10)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 10)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 // Slot number of IonPoolStorage.interestRateModule
 definition IS_STORAGE_SLOT_INTEREST_RATE_MODULE(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 11)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 11)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 // Slot number of IonPoolStorage.whitelist
 definition IS_STORAGE_SLOT_WHITELIST(mathint slot) returns bool 
-    = to_bytes32(require_uint256(slot - 12)) == ION_POOL_STORAGE_LOCATION(); 
+    = to_bytes32(require_uint256(slot - 12)) == to_bytes32(ION_POOL_STORAGE_LOCATION()); 
 
 ////////////////// FUNCTIONS //////////////////////
 

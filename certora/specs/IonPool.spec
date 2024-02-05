@@ -38,19 +38,3 @@ rule gettersIntegrity() {
     assert(interestRateModule() == ghostInterestRateModule);
     assert(whitelist() == ghostWhitelist);
 }
-
-rule testUpdateIlkDebtCeiling(env e) {
-    assert(require_uint256(ghostIlksDebtCeiling[1]) == debtCeiling(1));
-}
-
-rule testTotalNormalizedDebt(env e) {
-    assert(totalNormalizedDebt(1) != 4);
-}
-
-rule testSpot(env e) {
-    assert(spot(4) != 4);
-}
-
-rule testDust(env e) {
-    assert(dust(0) != 4);
-}
