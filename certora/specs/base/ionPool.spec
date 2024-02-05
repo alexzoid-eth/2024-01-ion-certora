@@ -68,10 +68,18 @@ methods {
 
 ///////////////// DEFINITIONS /////////////////////
 
+// Slot number of PausableStorageLocation
+definition PAUSED_STORAGE_LOCATION() returns uint256 
+    = 0xcd5ed15c6e187e77e9aee88184c21f4f2182ab5827cb3b7e07fbedcd63f03300;
+
 // Slot number of IonPoolStorageLocation
 definition ION_POOL_STORAGE_LOCATION() returns uint256 
     = 0xceba3d526b4d5afd91d1b752bf1fd37917c20a6daf576bcb41dd1c57c1f67e00;
  
+//
+// IonPoolStorage.ilks[]
+//
+
 // Slot number of IonPoolStorage.ilks[] length
 definition STORAGE_SLOT_ILKS_LENGTH() returns bytes32 = to_bytes32(ION_POOL_STORAGE_LOCATION());
 
@@ -82,8 +90,8 @@ definition ILKS_SIZE_IN_SLOTS() returns mathint = 4;
 definition STORAGE_SLOT_ILKS_0() returns bytes32 
     = keccak256(STORAGE_SLOT_ILKS_LENGTH()); 
 
-// Limit the maximum length of IonPoolStorage.ilks[] from max_uint8 to 2
-definition STORAGE_ILKS_MAX_LENGTH() returns mathint = 2;
+// Limit the maximum length of IonPoolStorage.ilks[] from max_uint8 to 3
+definition STORAGE_ILKS_MAX_LENGTH() returns mathint = 3;
 
 // Check if slot contains variables of IonPoolStorage.ilks[number]
 definition IS_STORAGE_SLOT_ILKS_OFFSET(mathint slot, mathint number, mathint offset) returns bool 
@@ -98,9 +106,26 @@ definition ILKS_SLOT0_RATE(uint256 s) returns uint256
 definition ILKS_SLOT0_LAST_RATE_UPDATE(uint256 s) returns uint256 
     = (s & 0xffffffffffff0000000000000000000000000000000000000000000000000000) >> 208;
 
+//
+// IonPoolStorage.ilkAddresses
+//
+
+// Limit the maximum length of IonPoolStorage.ilkAddresses
+definition STORAGE_ILK_ADDRESSES_MAX_LENGTH() returns mathint = STORAGE_ILKS_MAX_LENGTH();
+
 // Slot number of IonPoolStorage.ilkAddresses._inner._values[] length
 definition STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_LENGTH() returns bytes32 
     = keccak256(to_bytes32(require_uint256(ION_POOL_STORAGE_LOCATION() + 1))); 
+
+// Check if slot contains variables of IonPoolStorage.ilkAddresses._inner._values[]
+definition IS_STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_OFFSET(mathint slot, mathint number) returns bool 
+    = to_bytes32(require_uint256(slot - number)) == STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_LENGTH(); 
+
+// @todo IonPoolStorage.ilkAddresses._inner._positions
+
+//
+// IonPoolStorage.debt ... IonPoolStorage.whitelist
+//
 
 // Slot number of IonPoolStorage.debt
 definition IS_STORAGE_SLOT_DEBT(mathint slot) returns bool 
@@ -128,12 +153,66 @@ definition IS_STORAGE_SLOT_WHITELIST(mathint slot) returns bool
 
 ////////////////// FUNCTIONS //////////////////////
 
-// Setup contract environment
+//
+// Setup environment
+//
+
 function setUp() {
     require(ghostIlksLength <= STORAGE_ILKS_MAX_LENGTH());
 }
 
-// Process hook for IonPoolStorage.ilks[]. Support 2 elements in ilks[] array
+function setUpEnv(env e) {
+    setUp();
+    require(e.msg.value == 0);
+    require(e.msg.sender != 0);
+}
+
+//
+// IonPoolStorage.ilks[]
+//
+
+function _processIlksArrayHook(bool read, uint256 slot, uint256 val, mathint i) returns bool {
+    // ilks[i].totalNormalizedDebt, ilks[i].rate, ilks[i].lastRateUpdate
+    if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, i, 0)) {  
+        if(read) {
+            require(require_uint256(ghostIlksTotalNormalizedDebt[i]) == ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val));
+            require(require_uint256(ghostIlksRate[i]) == ILKS_SLOT0_RATE(val));
+            require(require_uint256(ghostIlksLastRateUpdate[i]) == ILKS_SLOT0_LAST_RATE_UPDATE(val));
+        } else {
+            ghostIlksTotalNormalizedDebt[i] = ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val);
+            ghostIlksRate[i] = ILKS_SLOT0_RATE(val);
+            ghostIlksLastRateUpdate[i] = ILKS_SLOT0_LAST_RATE_UPDATE(val);
+        }
+    // ilks[i].spot
+    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, i, 1)) {  
+        if(read) {
+            require(ghostIlksSpot[i] == require_address(to_bytes32(val)));
+        } else {
+            ghostIlksSpot[i] = require_address(to_bytes32(val));
+        }
+    // ilks[i].debtCeiling
+    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, i, 2)) {  
+        if(read) {
+            require(require_uint256(ghostIlksDebtCeiling[i]) == val);
+        } else {
+            ghostIlksDebtCeiling[i] = val;
+        }
+    // ilks[i].dust
+    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, i, 3)) {  
+        if(read) {
+            require(require_uint256(ghostIlksDust[i]) == val);
+        } else {
+            ghostIlksDust[i] = val;
+        }
+    // Nothing found
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+// Support 2 elements in ilks[] array
 function processIlksArrayHook(bool read, uint256 slot, uint256 val) returns bool {
         
     // IonPoolStorage.ilks[] length
@@ -143,74 +222,12 @@ function processIlksArrayHook(bool read, uint256 slot, uint256 val) returns bool
         } else {
             ghostIlksLength = val;
         }
-
-    // ilks[0].totalNormalizedDebt, ilks[0].rate, ilks[0].lastRateUpdate
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 0, 0)) {  
-        if(read) {
-            require(require_uint256(ghostIlksTotalNormalizedDebt[0]) == ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val));
-            require(require_uint256(ghostIlksRate[0]) == ILKS_SLOT0_RATE(val));
-            require(require_uint256(ghostIlksLastRateUpdate[0]) == ILKS_SLOT0_LAST_RATE_UPDATE(val));
-        } else {
-            ghostIlksTotalNormalizedDebt[0] = ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val);
-            ghostIlksRate[0] = ILKS_SLOT0_RATE(val);
-            ghostIlksLastRateUpdate[0] = ILKS_SLOT0_LAST_RATE_UPDATE(val);
-        }
-    // ilks[0].spot
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 0, 1)) {  
-        if(read) {
-            require(ghostIlksSpot[0] == require_address(to_bytes32(val)));
-        } else {
-            ghostIlksSpot[0] = require_address(to_bytes32(val));
-        }
-    // ilks[0].debtCeiling
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 0, 2)) {  
-        if(read) {
-            require(require_uint256(ghostIlksDebtCeiling[0]) == val);
-        } else {
-            ghostIlksDebtCeiling[0] = val;
-        }
-    // ilks[0].dust
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 0, 3)) {  
-        if(read) {
-            require(require_uint256(ghostIlksDust[0]) == val);
-        } else {
-            ghostIlksDust[0] = val;
-        }
-    }
-
-    // ilks[1].totalNormalizedDebt, ilks[1].rate, ilks[1].lastRateUpdate
-    if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 1, 0)) {  
-        if(read) {
-            require(require_uint256(ghostIlksTotalNormalizedDebt[1]) == ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val));
-            require(require_uint256(ghostIlksRate[1]) == ILKS_SLOT0_RATE(val));
-            require(require_uint256(ghostIlksLastRateUpdate[1]) == ILKS_SLOT0_LAST_RATE_UPDATE(val));
-        } else {
-            ghostIlksTotalNormalizedDebt[1] = ILKS_SLOT0_TOTAL_NORMALIZED_DEBT(val);
-            ghostIlksRate[1] = ILKS_SLOT0_RATE(val);
-            ghostIlksLastRateUpdate[1] = ILKS_SLOT0_LAST_RATE_UPDATE(val);
-        }
-    // ilks[1].spot
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 1, 1)) {  
-        if(read) {
-            require(ghostIlksSpot[1] == require_address(to_bytes32(val)));
-        } else {
-            ghostIlksSpot[1] = require_address(to_bytes32(val));
-        }
-    // ilks[1].debtCeiling
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 1, 2)) {  
-        if(read) {
-            require(require_uint256(ghostIlksDebtCeiling[1]) == val);
-        } else {
-            ghostIlksDebtCeiling[1] = val;
-        }
-    // ilks[1].dust
-    } else if(IS_STORAGE_SLOT_ILKS_OFFSET(slot, 1, 3)) {  
-        if(read) {
-            require(require_uint256(ghostIlksDust[1]) == val);
-        } else {
-            ghostIlksDust[1] = val;
-        }
-    
+    // IonPoolStorage.ilks[0]
+    } else if(_processIlksArrayHook(read, slot, val, 0)) {
+    // IonPoolStorage.ilks[1]
+    } else if(_processIlksArrayHook(read, slot, val, 1)) {
+    // IonPoolStorage.ilks[2]
+    } else if(_processIlksArrayHook(read, slot, val, 2)) {
     } else {
         return false;
     }
@@ -218,13 +235,54 @@ function processIlksArrayHook(bool read, uint256 slot, uint256 val) returns bool
     return true;
 }
 
-// Process hook for EnumerableSet.AddressSet
-function processEnumerableSetHook(bool read, uint256 slot, uint256 val) returns bool {
+//
+// IonPoolStorage.ilkAddresses
+//
 
-    return false;
+function _processEnumerableSetHook(bool read, uint256 slot, uint256 val, mathint i) returns bool {
+
+    // IonPoolStorage.ilkAddresses._inner._values[i]
+    if(IS_STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_OFFSET(slot, i)) {
+        if(read) {
+            require(ghostAddressSetValues[i] == to_bytes32(val));
+        } else {
+            ghostAddressSetValues[i] = to_bytes32(val);
+        }
+    // Nothing found
+    } else {
+        return false;
+    }
+
+    return true;
 }
 
-// Process hook for regular variables
+function processEnumerableSetHook(bool read, uint256 slot, uint256 val) returns bool {
+
+    // IonPoolStorage.ilkAddresses._inner._values[] length
+    if(to_bytes32(slot) == STORAGE_SLOT_ILKADDRESSES_INNER_VALUES_LENGTH()) {
+        if(read) {
+            require(require_uint256(ghostAddressSetValuesLength) == val);
+        } else {
+            ghostAddressSetValuesLength = val;
+        }
+    // IonPoolStorage.ilkAddresses._inner._values[0]
+    } else if(_processEnumerableSetHook(read, slot, val, 0)) {
+    // IonPoolStorage.ilkAddresses._inner._values[1]
+    } else if(_processEnumerableSetHook(read, slot, val, 1)) {
+    // IonPoolStorage.ilkAddresses._inner._values[2]
+    } else if(_processEnumerableSetHook(read, slot, val, 2)) {
+    // Nothing found
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+//
+// IonPoolStorage.debt ... IonPoolStorage.whitelist
+//
+
 function processVariablesHook(bool read, uint256 slot, uint256 val) returns bool {
     
     if(IS_STORAGE_SLOT_DEBT(slot)) {
@@ -268,7 +326,7 @@ function processVariablesHook(bool read, uint256 slot, uint256 val) returns bool
         } else {
             ghostWhitelist = require_address(to_bytes32(val));
         }
-
+    // Nothing found
     } else {
         return false;
     }
@@ -318,6 +376,23 @@ ghost mapping (mathint => mathint) ghostIlksDust {
 }
 
 //
+// IonPoolStorage.ilkAddresses
+//
+
+ghost mathint ghostAddressSetValuesLength {
+    init_state axiom ghostAddressSetValuesLength == 0;
+    axiom ghostAddressSetValuesLength < 0xffffffffffffffffffffffffffffffff;
+}
+
+ghost mapping(mathint => bytes32) ghostAddressSetValues {
+    init_state axiom forall mathint index. ghostAddressSetValues[index] == to_bytes32(0);
+}
+
+ghost mapping(bytes32 => mathint) ghostAddressSetIndexes {
+    init_state axiom forall bytes32 val. ghostAddressSetIndexes[val] == 0;
+}
+
+//
 // IonPoolStorage.debt ... IonPoolStorage.whitelist
 //
 
@@ -351,7 +426,19 @@ ghost address ghostWhitelist {
     init_state axiom ghostWhitelist == 0;
 }
 
-// Read storage hook
+//
+// Paused
+//
+
+// PausableStorage._paused
+ghost uint8 ghostPaused {
+    init_state axiom ghostPaused == 0;
+}
+
+//
+// Read/Write storage hooks
+//
+
 hook ALL_SLOAD(uint256 slot) uint256 val {
 
     // ilks[]
@@ -362,10 +449,13 @@ hook ALL_SLOAD(uint256 slot) uint256 val {
 
     // debt, weth, wethSupplyCap, totalUnbackedDebt, interestRateModule, whitelist
     } else if(processVariablesHook(true, slot, val)) {
+    
+    // paused
+    } else if(slot == PAUSED_STORAGE_LOCATION()) {
+        require(ghostPaused == require_uint8(val));
     }
 }
 
-// Write storage hook
 hook ALL_SSTORE(uint256 slot, uint256 val)  {
 
     // ilks[]
@@ -376,7 +466,19 @@ hook ALL_SSTORE(uint256 slot, uint256 val)  {
 
     // debt, weth, wethSupplyCap, totalUnbackedDebt, interestRateModule, whitelist
     } else if(processVariablesHook(false, slot, val)) {
+
+    // paused
+    } else if(slot == PAUSED_STORAGE_LOCATION()) {
+        ghostPaused = require_uint8(val);
     }
 }
 
 ///////////////// PROPERTIES //////////////////////
+
+invariant ilkAddressesLengthSolvency() ghostIlksLength == ghostAddressSetValuesLength {
+    preserved {
+        setUp();
+    }
+}
+
+invariant ilkMaxLength() ghostIlksLength <= max_uint8;
