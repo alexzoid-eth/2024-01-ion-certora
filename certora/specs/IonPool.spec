@@ -138,9 +138,9 @@ ghost uint80 answeredInRound;
 
 ghost mathint ghostCollateralCount;
 
-ghost bool madeCall;
+ghost bool ghostMadeCall;
 hook CALL(uint g, address addr, uint value, uint argsOffset, uint argsLength, uint retOffset, uint retLength) uint rc {
-    madeCall = true;
+    ghostMadeCall = true;
 }
 
 ///////////////// PROPERTIES //////////////////////
@@ -158,16 +158,6 @@ rule initializeCouldBeExecutedOnce(env e, calldataarg args) {
     bool reverted = lastReverted;
 
     assert(reverted);
-}
-
-rule externalContractCalls(env e, method f, calldataarg args) 
-    filtered { f -> EXTERNAL_CONTRACT_CALLS_FUNCTIONS(f) } {
-    
-    require(madeCall == false);
-
-    f(e, args);
-
-    assert(madeCall);
 }
 
 rule onlyRoleIonIntegrity(env e, method f, calldataarg args) 
@@ -213,6 +203,16 @@ rule modifyStoragePossibility(env e, method f, calldataarg args)
     storage after = lastStorage;
 
     satisfy(before[currentContract] != after[currentContract]);
+}
+
+rule externalContractCallsPossibility(env e, method f, calldataarg args) 
+    filtered { f -> EXTERNAL_CONTRACT_CALLS_FUNCTIONS(f) } {
+    
+    require(ghostMadeCall == false);
+
+    f(e, args);
+
+    satisfy(ghostMadeCall);
 }
 
 rule pauseableIntegrity(env e, method f, calldataarg args) 
