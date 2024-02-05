@@ -16,6 +16,8 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
+import "forge-std/console.sol";
+
 using Strings for uint256;
 using WadRayMath for uint256;
 
@@ -43,6 +45,24 @@ contract IonPool_Test is IonPoolSharedSetup, IIonPoolEvents {
             gemJoins[i].join(borrower1, INITIAL_BORROWER_COLLATERAL_BALANCE);
             vm.stopPrank();
         }
+    }
+
+    function testKeccak256() public {
+        bytes32 s = 0xceba3d526b4d5afd91d1b752bf1fd37917c20a6daf576bcb41dd1c57c1f67e00;
+        console.logBytes32(keccak256(abi.encodePacked(s)));
+    }
+
+    struct Ilk {
+        uint104 totalNormalizedDebt; // Total Normalised Debt     [WAD]
+        uint104 rate; // Accumulated Rates         [RAY]
+        uint48 lastRateUpdate; // block.timestamp of last update; overflows in 800_000 years
+        SpotOracle spot; // Oracle that provides price with safety margin
+        uint256 debtCeiling; // Debt Ceiling              [RAD]
+        uint256 dust; // Vault Debt Floor            [RAD]
+    }
+
+    function testUnpack() public {
+
     }
 
     function test_SetUp() public override {
