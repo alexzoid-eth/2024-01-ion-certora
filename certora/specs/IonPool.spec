@@ -359,7 +359,7 @@ rule removeOperatorIntegrity(env e, address operator) {
     assert(!isOperator(e.msg.sender, operator));
 }
 
-rule withdrawCollateralSetRecepientGem(env e, uint8 ilkIndex, address user, address recipient, uint256 amount) {
+rule withdrawCollateralSetRecepientGemPossibility(env e, uint8 ilkIndex, address user, address recipient, uint256 amount) {
 
     uint256 gemBefore = gem(ilkIndex, recipient);
 
@@ -368,4 +368,17 @@ rule withdrawCollateralSetRecepientGem(env e, uint8 ilkIndex, address user, addr
     uint256 gemAfter = gem(ilkIndex, recipient);
 
     satisfy(gemBefore != gemAfter);
+}
+
+rule depositCollateralSetGem(env e, uint8 ilkIndex, address user, address depositor, uint256 amount, bytes32[] proof) {
+
+    require(amount != 0);
+
+    uint256 gemBefore = gem(ilkIndex, depositor);
+
+    depositCollateral(e, ilkIndex, user, depositor, amount, proof);
+
+    uint256 gemAfter = gem(ilkIndex, depositor);
+
+    assert(gemBefore != gemAfter);
 }
