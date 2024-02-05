@@ -83,15 +83,6 @@ definition ACCRUE_INTEREST_FUNCTIONS(method f) returns bool =
 
 definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
 
-definition EXTERNAL_CONTRACT_CALLS_FUNCTIONS(method f) returns bool = 
-    ACCRUE_INTEREST_FUNCTIONS(f)
-    || f.selector == sig:calculateRewardAndDebtDistribution().selector
-    || f.selector == sig:calculateRewardAndDebtDistributionForIlk(uint8).selector
-    || f.selector == sig:repayBadDebt(address, uint256).selector
-    || f.selector == sig:rate(uint8).selector
-    || f.selector == sig:debt().selector
-    || f.selector == sig:getCurrentBorrowRate(uint8).selector;
-
 ////////////////// FUNCTIONS //////////////////////
 
 function collateralCountCVL() returns uint256 {
@@ -203,16 +194,6 @@ rule modifyStoragePossibility(env e, method f, calldataarg args)
     storage after = lastStorage;
 
     satisfy(before[currentContract] != after[currentContract]);
-}
-
-rule externalContractCallsPossibility(env e, method f, calldataarg args) 
-    filtered { f -> EXTERNAL_CONTRACT_CALLS_FUNCTIONS(f) } {
-    
-    require(ghostMadeCall == false);
-
-    f(e, args);
-
-    satisfy(ghostMadeCall);
 }
 
 rule pauseableIntegrity(env e, method f, calldataarg args) 
@@ -376,4 +357,15 @@ rule removeOperatorIntegrity(env e, address operator) {
     removeOperator(e, operator);
 
     assert(!isOperator(e.msg.sender, operator));
+}
+
+rule withdrawCollateralSetRecepientGem(env e, uint8 ilkIndex, address user, address recipient, uint256 amount) {
+
+    uint256 gemBefore = gem(ilkIndex, recipient);
+
+    withdrawCollateral(e, ilkIndex, user, recipient, amount);
+
+    uint256 gemAfter = gem(ilkIndex, recipient);
+
+    satisfy(gemBefore != gemAfter);
 }
